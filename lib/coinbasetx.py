@@ -48,7 +48,6 @@ class CoinbaseTransactionPOW(halfnode.CTransaction):
     def set_extranonce(self, extranonce):
         if len(extranonce) != self.extranonce_size:
             raise Exception("Incorrect extranonce size")
-        
         (part1, part2) = self.vin[0]._scriptSig_template
         self.vin[0].scriptSig = part1 + extranonce + part2
 

@@ -27,19 +27,11 @@ DIFF1 = '0x0000ffff00000000000000000000000000000000000000000000000000000000' # s
 # Needs to be a setting due to database differences
 COINSWITCHING  = False
 
-# ******************** BASIC SETTINGS ***************
-# Backup Coin Daemon address's (consider having at least 1 backup)
-# You can have up to 99
-
-#COINDAEMON_TRUSTED_HOST_1 = 'localhost'
-#COINDAEMON_TRUSTED_PORT_1 = 8332
-#COINDAEMON_TRUSTED_USER_1 = 'user'
-#COINDAEMON_TRUSTED_PASSWORD_1 = 'somepassword'
-
-#COINDAEMON_TRUSTED_HOST_2 = 'localhost'
-#COINDAEMON_TRUSTED_PORT_2 = 8332
-#COINDAEMON_TRUSTED_USER_2 = 'user'
-#COINDAEMON_TRUSTED_PASSWORD_2 = 'somepassword'
+# ******************* Merge Mining Coin ***************
+MM_HOST = 'localhost'
+MM_PORT = 8332
+MM_USER = 'user'
+MM_PASSWORD = 'somepassword'
 
 # ******************** GENERAL SETTINGS ***************
 # Set process name of twistd, much more comfortable if you run multiple processes on one machine

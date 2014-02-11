@@ -36,9 +36,12 @@ class DBInterface():
         self.bitcoinrpc = bitcoinrpc
 
     def connectDB(self):
-        log.debug('DB_Mysql INIT')
-        import DB_Mysql
-        return DB_Mysql.DB_Mysql()
+	if settings.DATABASE_DRIVER == "none":
+	   import DB_None
+	   return DB_None.DB_None()
+	else:
+           import DB_Mysql
+           return DB_Mysql.DB_Mysql()
 
     def scheduleImport(self):
         self.do_import(dbi, force)
