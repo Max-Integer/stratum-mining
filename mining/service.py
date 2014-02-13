@@ -65,7 +65,7 @@ class MiningService(GenericService):
             log.info("New block notification received with no coinname")
 
         Interfaces.template_registry.update_block()
-        return True
+        Interfaces.template_registry.update_mm_block()
 
     @admin
     def add_litecoind(self, *args):
@@ -89,12 +89,6 @@ class MiningService(GenericService):
         d = Interfaces.template_registry.wait_for_update()
         d.addCallback(Interfaces.changeCoin, args[0], args[1], args[2], args[3], args[4], args[5], args[6])
         return d
-
-    @admin
-    def refresh_config(self):
-        settings.setup()
-        log.info("Updated Config")
-        return True
 
     @defer.inlineCallbacks
     def authorize(self, worker_name, worker_password):

@@ -80,6 +80,7 @@ class TemplateRegistry(object):
 
         # Create first block template on startup
         self._update_block(data)
+        self.update_mm_block()
 
     def get_new_extranonce1(self):
         '''Generates unique extranonce1 (e.g. for newly
@@ -179,13 +180,14 @@ class TemplateRegistry(object):
         self.last_update_mm = Interfaces.timestamper.time()
         d = self.mm_rpc.getauxblock()
         d.addCallback(self._update_mm_block)
-        d.addErrback(self._update_mm_failed)
+        d.addErrback(self._update_mm_block_failed)
 
     def _update_mm_block(self,data):
         self.mm_hash = data['hash']
-        self.mm_script = 'fabe6d6d'+data['hash']+'01000000'+'00000000'
+        self.mm_script = ('fabe6d6d'+data['hash']+'01000000'+'00000000').decode('hex')
         target = data['target'].decode('hex')[::-1].encode('hex')
         self.mm_target = int(target,16)
+        self.update_mm_in_progress = False
         self.update_block()
         return data
 
@@ -353,12 +355,23 @@ class TemplateRegistry(object):
             coinbase_hex = binascii.hexlify(coinbase_bin)
             branch_count = job.merkletree.branchCount()
             branch_hex = job.merkletree.branchHex()
-            parent_hash = "%064x" % hash_int
-            parent_header = header_hex
+            parent_hash = util.rev("%064x" % hash_int)
+            parent_header = util.flip(header_hex)
             submission = coinbase_hex + parent_hash + branch_count + branch_hex + "000000000000000000" + parent_header;
             mm_submit = self.mm_rpc.getauxblock(self.mm_hash,submission)
+            mm_submit.addCallback(self._mm_submit_ok)
+            mm_submit.addErrback(self._mm_submit_fail)
+            
             if mm_submit:
                 self.update_block()
+            log.info("Coinbase:%s",coinbase_hex)
+            log.info("Branch Count:%s",branch_count)
+            log.info("Branch Hex:%s",branch_hex)
+            log.info("Parent Hash:%s",parent_hash)
+            log.info("Parent Header:%s",parent_header)
+            log.info("MM Hash:%s",self.mm_hash)
+            log.info(" AuxPow:%s",submission)
+            log.info("    Res:"+str(mm_submit))
         
         if settings.SOLUTION_BLOCK_HASH:
         # Reverse the header and get the potential block hash (for scrypt only) only do this if we want to send in the block hash to the shares table
@@ -367,3 +380,13 @@ class TemplateRegistry(object):
             return (header_hex, block_hash_hex, share_diff, None)
         else:
             return (header_hex, scrypt_hash_hex, share_diff, None)
+
+
+    def _mm_submit_ok(self,result):
+        log.info("MM Submit "+str(result))
+
+    def _mm_submit_fail(self):
+        log.info("MM Submit Failed")
+        
+
+        
