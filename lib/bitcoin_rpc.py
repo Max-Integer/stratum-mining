@@ -148,7 +148,7 @@ class BitcoinRPC(object):
                 if algo==0:
                     resp = (yield self._call('getauxblock', []))
                 else:
-                    resp = (yield self._call('getauxblock', [1,]))
+                    resp = (yield self._call('getauxblock', ['1',]))
                 defer.returnValue(json.loads(resp)['result'])
             except Exception as e:
                 raise
