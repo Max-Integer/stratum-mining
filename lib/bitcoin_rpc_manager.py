@@ -127,11 +127,14 @@ class BitcoinRPCManager(object):
             except:
                 self.next_connection()
 
-    def getauxblock(self,mm_hash=None,mm_submission=None):
+    def getauxblock(self,mm_hash=None,mm_submission=None,algo=0):
         while True:
             if mm_hash is None or mm_submission is None:
                 try:
-                    return self.conns[self.curr_conn].getauxblock()
+                    if algo==0:
+                        return self.conns[self.curr_conn].getauxblock()
+                    else:
+                        return self.conns[self.curr_conn].getauxblock(algo=1)
                 except:
                     self.next_connection()
             else:

@@ -55,7 +55,8 @@ class TemplateRegistry(object):
         self.mm_script = ""
         self.mm_target = None
         self.last_height = None
-
+        self.algo = 0
+        
         # Create first block template on startup
         self.update_block()
 
@@ -178,7 +179,7 @@ class TemplateRegistry(object):
             return
         self.update_mm_in_progress = True
         self.last_update_mm = Interfaces.timestamper.time()
-        d = self.mm_rpc.getauxblock()
+        d = self.mm_rpc.getauxblock(algo=self.algo)
         d.addCallback(self._update_mm_block)
         d.addErrback(self._update_mm_block_failed)
 
@@ -364,6 +365,7 @@ class TemplateRegistry(object):
             
             if mm_submit:
                 self.update_block()
+		
             log.info("Coinbase:%s",coinbase_hex)
             log.info("Branch Count:%s",branch_count)
             log.info("Branch Hex:%s",branch_hex)

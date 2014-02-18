@@ -142,10 +142,13 @@ class BitcoinRPC(object):
                 raise
 
     @defer.inlineCallbacks
-    def getauxblock(self,mm_hash=None,mm_submission=None):
+    def getauxblock(self,mm_hash=None,mm_submission=None,algo=0):
         if mm_hash is None or mm_submission is None:
             try:
-                resp = (yield self._call('getauxblock', []))
+                if algo==0:
+                    resp = (yield self._call('getauxblock', []))
+                else:
+                    resp = (yield self._call('getauxblock', [1,]))
                 defer.returnValue(json.loads(resp)['result'])
             except Exception as e:
                 raise
