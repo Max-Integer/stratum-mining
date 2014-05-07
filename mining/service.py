@@ -81,12 +81,11 @@ class MiningService(GenericService):
         if Interfaces.worker_manager.authorize(worker_name, worker_password):
             session['authorized'][worker_name] = worker_password
             is_ext_diff = False
+            session['difficulty'] = settings.POOL_TARGET
             if settings.ALLOW_EXTERNAL_DIFFICULTY:
                 (is_ext_diff, session['difficulty']) = Interfaces.worker_manager.get_user_difficulty(worker_name)
-                self.connection_ref().rpc('mining.set_difficulty', [session['difficulty'], ], is_notification=True)
-            else:
-                session['difficulty'] = settings.POOL_TARGET
-            # worker_log = (valid, invalid, is_banned, diff, is_ext_diff, timestamp)
+                if is_ext_diff == True:
+                    self.connection_ref().on_finish.addCallback(self.after_authorize, worker_name)
             Interfaces.worker_manager.worker_log['authorized'][worker_name] = (0, 0, False, session['difficulty'], is_ext_diff, Interfaces.timestamper.time())            
             return True
         else:
@@ -97,7 +96,19 @@ class MiningService(GenericService):
             if worker_name in Interfaces.worker_manager.worker_log['authorized']:
                 del Interfaces.worker_manager.worker_log['authorized'][worker_name]
             return False
-        
+
+    def after_authorize(self, is_authorized, worker_name):
+        session = self.connection_ref().get_session()
+        log.debug("External Difficulty After callback for worker(%s): %f" % (worker_name, session['difficulty']))
+        self.connection_ref().rpc('mining.set_difficulty', [session['difficulty'], ], is_notification=True)
+        log.debug("External Difficulty Notified of New Difficulty for worker(%s)" % (worker_name))
+
+        (job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime, _) = Interfaces.template_registry.get_last_broadcast_args()
+        work_id = Interfaces.worker_manager.register_work(worker_name, job_id, session['difficulty'])
+        self.connection_ref().rpc('mining.notify', [work_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime, False, ], is_notification=True)
+        log.debug("External Difficulty Sent new work for worker(%s)" % (worker_name))
+        return True
+
     def subscribe(self, *args):
         '''Subscribe for receiving mining jobs. This will
         return subscription details, extranonce1_hex and extranonce2_size'''
