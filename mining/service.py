@@ -77,6 +77,7 @@ class MiningService(GenericService):
         
         session = self.connection_ref().get_session()
         session.setdefault('authorized', {})
+        ip = self.connection_ref()._get_ip()
         
         if Interfaces.worker_manager.authorize(worker_name, worker_password):
             session['authorized'][worker_name] = worker_password
@@ -87,10 +88,11 @@ class MiningService(GenericService):
                 if is_ext_diff == True:
                     self.connection_ref().on_finish.addCallback(self.after_authorize, worker_name)
             Interfaces.worker_manager.worker_log['authorized'][worker_name] = (0, 0, False, session['difficulty'], is_ext_diff, Interfaces.timestamper.time())            
+            log.info("worker authorization - Worker Name: %s IP: %s", worker_name, str(ip))
             return True
         else:
             ip = self.connection_ref()._get_ip()
-            log.info("Failed worker authorization: IP %s", str(ip))
+            log.info("Failed worker authorization - Worker Name: %s IP: %s", worker_name, str(ip))
             if worker_name in session['authorized']:
                 del session['authorized'][worker_name]
             if worker_name in Interfaces.worker_manager.worker_log['authorized']:
