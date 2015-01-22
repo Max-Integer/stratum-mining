@@ -9,8 +9,8 @@ log = lib.logger.get_logger('coinbaser')
 # TODO: Add on_* hooks in the app
     
 class SimpleCoinbaser(object):
-    '''This very simple coinbaser uses constant bitcoin address
-    for all generated blocks.'''
+    """This very simple coinbaser uses constant bitcoin address
+    for all generated blocks."""
     
     def __init__(self, bitcoin_rpc, address):
         log.debug("Got to coinbaser")
@@ -33,27 +33,26 @@ class SimpleCoinbaser(object):
             self.is_valid = True
             log.info("Coinbase address '%s' is valid" % self.address)
             if 'address' in result:
-               log.debug("Address = %s " % result['address'])
-               self.address = result['address']
+                log.debug("Address = %s " % result['address'])
+                self.address = result['address']
             if 'pubkey' in result:
-               log.debug("PubKey = %s " % result['pubkey'])
-               self.pubkey = result['pubkey']
+                log.debug("PubKey = %s " % result['pubkey'])
+                self.pubkey = result['pubkey']
             if 'iscompressed' in result:
-               log.debug("Is Compressed = %s " % result['iscompressed'])
+                log.debug("Is Compressed = %s " % result['iscompressed'])
             if 'account' in result:
-               log.debug("Account = %s " % result['account'])
+                log.debug("Account = %s " % result['account'])
             if not self.on_load.called:
-               self.address = result['address']
-               self.on_load.callback(True)
+                self.on_load.callback(True)
 
         elif result['isvalid'] and settings.ALLOW_NONLOCAL_WALLET == True :
              self.is_valid = True
              log.warning("!!! Coinbase address '%s' is valid BUT it is not local" % self.address)
              if 'pubkey' in result:
-               log.debug("PubKey = %s " % result['pubkey'])
-               self.pubkey = result['pubkey']
+                log.debug("PubKey = %s " % result['pubkey'])
+                self.pubkey = result['pubkey']
              if 'account' in result:
-               log.debug("Account = %s " % result['account'])
+                log.debug("Account = %s " % result['account'])
              if not self.on_load.called:
                     self.on_load.callback(True)
 
@@ -63,7 +62,7 @@ class SimpleCoinbaser(object):
         
         #def on_new_block(self):
     #    pass
-    
+
     #def on_new_template(self):
     #    pass
     def _failure(self, failure):
@@ -72,10 +71,21 @@ class SimpleCoinbaser(object):
     
     def get_script_pubkey(self):
         if settings.COINDAEMON_Reward == 'POW':
-            self._validate()
             return util.script_to_address(self.address)
         else:
             return util.script_to_pubkey(self.pubkey)
                    
     def get_coinbase_data(self):
         return ''
+
+    def change(self, bitcoin_rpc, address):
+        self.address = address
+
+        self.on_load = defer.Deferred()
+
+        self.address = address
+        self.is_valid = False
+
+        self.bitcoin_rpc = bitcoin_rpc
+        self._validate()
+

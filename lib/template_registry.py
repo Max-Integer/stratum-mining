@@ -32,6 +32,7 @@ class TemplateRegistry(object):
     def __init__(self, block_template_class, coinbaser, bitcoin_rpc, instance_id,
                  on_template_callback, on_block_callback):
         self.prevhashes = {}
+        self.new_coin = False
         self.jobs = weakref.WeakValueDictionary()
         
         self.extranonce_counter = ExtranonceCounter(instance_id)
@@ -50,7 +51,29 @@ class TemplateRegistry(object):
 
         # Create first block template on startup
         self.update_block()
-        
+
+    def update(self, block_template_class, coinbaser, bitcoin_rpc, instance_id,
+               on_template_callback, on_block_callback, data):
+        self.prevhashes = {}
+        self.jobs = weakref.WeakValueDictionary()
+
+        self.extranonce_counter = ExtranonceCounter(instance_id)
+        self.extranonce2_size = block_template_class.coinbase_transaction_class.extranonce_size \
+                                - self.extranonce_counter.get_size()
+
+        self.coinbaser = coinbaser
+        self.block_template_class = block_template_class
+        self.bitcoin_rpc = bitcoin_rpc
+        self.on_block_callback = on_block_callback
+        self.on_template_callback = on_template_callback
+
+        self.last_block = None
+        self.update_in_progress = False
+        self.last_update = None
+
+        # Create first block template on startup
+        self._update_block(data)
+
     def get_new_extranonce1(self):
         '''Generates unique extranonce1 (e.g. for newly
         subscribed connection.'''
@@ -60,13 +83,13 @@ class TemplateRegistry(object):
     def get_last_broadcast_args(self):
         '''Returns arguments for mining.notify
         from last known template.'''
-        log.debug("Getting Laat Template")
+        log.debug("Getting Last Template")
         return self.last_block.broadcast_args
         
-    def add_template(self, block,block_height):
-        '''Adds new template to the registry.
+    def add_template(self, block, block_height):
+        """Adds new template to the registry.
         It also clean up templates which should
-        not be used anymore.'''
+        not be used anymore."""
         
         prevhash = block.prevhash_hex
 
@@ -100,25 +123,30 @@ class TemplateRegistry(object):
 
         # Everything is ready, let's broadcast jobs!
         self.on_template_callback(new_block)
-        
 
-        #from twisted.internet import reactor
-        #reactor.callLater(10, self.on_block_callback, new_block) 
-              
+    def wait_for_update(self):
+        if self.update_in_progress:
+            log.info("change coin while update in progress, wait for finish")
+            return self.d
+        else:
+            return defer.succeed(True)
+
     def update_block(self):
-        '''Registry calls the getblocktemplate() RPC
-        and build new block template.'''
+        """Registry calls the getblocktemplate() RPC
+        and build new block template."""
         
         if self.update_in_progress:
             # Block has been already detected
-            return
-        
+            log.info("in update_block more than once; returning")
+            return defer.succeed(None)
+
         self.update_in_progress = True
         self.last_update = Interfaces.timestamper.time()
         
-        d = self.bitcoin_rpc.getblocktemplate()
-        d.addCallback(self._update_block)
-        d.addErrback(self._update_block_failed)
+        self.d = self.bitcoin_rpc.getblocktemplate()
+        self.d.addCallback(self._update_block)
+        self.d.addErrback(self._update_block_failed)
+        return self.d
         
     def _update_block_failed(self, failure):
         log.error(str(failure))
@@ -129,13 +157,13 @@ class TemplateRegistry(object):
                 
         template = self.block_template_class(Interfaces.timestamper, self.coinbaser, JobIdGenerator.get_new_id())
         log.info(template.fill_from_rpc(data))
-        self.add_template(template,data['height'])
+        self.add_template(template, data['height'])
 
         log.info("Update finished, %.03f sec, %d txes" % \
                     (Interfaces.timestamper.time() - start, len(template.vtx)))
         
         self.update_in_progress = False        
-        return data
+        return True
     
     def diff_to_target(self, difficulty):
         '''Converts difficulty to target'''
@@ -154,7 +182,6 @@ class TemplateRegistry(object):
 
             if ip:
                 log.info("Worker submited invalid Job id: IP %s", str(ip))
-
             return None
         
         # Now we have to check if job is still valid.
@@ -280,7 +307,9 @@ class TemplateRegistry(object):
                             
             # 7. Submit block to the network
             serialized = binascii.hexlify(job.serialize())
-	    on_submit = self.bitcoin_rpc.submitblock(serialized, block_hash_hex, scrypt_hash_hex)
+            #just try both block hash and scrypt hash when checking for block creation
+            on_submit = self.bitcoin_rpc.submitblock(serialized, block_hash_hex, scrypt_hash_hex)
+
             if on_submit:
                 self.update_block()
 
@@ -288,6 +317,7 @@ class TemplateRegistry(object):
                 return (header_hex, block_hash_hex, share_diff, on_submit)
             else:
                 return (header_hex, scrypt_hash_hex, share_diff, on_submit)
+
         
         if settings.SOLUTION_BLOCK_HASH:
         # Reverse the header and get the potential block hash (for scrypt only) only do this if we want to send in the block hash to the shares table

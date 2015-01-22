@@ -6,7 +6,6 @@ import settings
 import lib.logger
 log = lib.logger.get_logger('coinbasetx')
 
-#if settings.COINDAEMON_Reward == 'POW':
 class CoinbaseTransactionPOW(halfnode.CTransaction):
     '''Construct special transaction used for coinbase tx.
     It also implements quick serialization using pre-cached
@@ -19,7 +18,6 @@ class CoinbaseTransactionPOW(halfnode.CTransaction):
     def __init__(self, timestamper, coinbaser, value, flags, height, data):
         super(CoinbaseTransactionPOW, self).__init__()
         log.debug("Got to CoinBaseTX")
-        #self.extranonce = 0
         
         if len(self.extranonce_placeholder) != self.extranonce_size:
             raise Exception("Extranonce placeholder don't match expected length!")
@@ -53,7 +51,7 @@ class CoinbaseTransactionPOW(halfnode.CTransaction):
         
         (part1, part2) = self.vin[0]._scriptSig_template
         self.vin[0].scriptSig = part1 + extranonce + part2
-#elif settings.COINDAEMON_Reward == 'POS':
+
 class CoinbaseTransactionPOS(halfnode.CTransaction):
     '''Construct special transaction used for coinbase tx.
     It also implements quick serialization using pre-cached
@@ -101,7 +99,7 @@ class CoinbaseTransactionPOS(halfnode.CTransaction):
         
         (part1, part2) = self.vin[0]._scriptSig_template
         self.vin[0].scriptSig = part1 + extranonce + part2
-#else:
+
 class CoinbaseTransaction(halfnode.CTransaction):
     '''Construct special transaction used for coinbase tx.
     It also implements quick serialization using pre-cached

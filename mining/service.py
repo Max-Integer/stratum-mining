@@ -24,6 +24,10 @@ class MiningService(GenericService):
     event = 'mining.notify'
 
     @admin
+    def rebroadcast(self):
+        MiningSubscription.on_template(False)
+
+    @admin
     def get_server_stats(self):
         serialized = '' 
         for subscription in Pubsub.iterate_subscribers(self.event):
@@ -46,14 +50,22 @@ class MiningService(GenericService):
         return '%s' % serialized
 
     @admin
-    def update_block(self):
-        '''Connect this RPC call to 'litecoind -blocknotify' for 
+    def update_block(self, *args):
+        """Connect this RPC call to 'litecoind -blocknotify' for
         instant notification about new block on the network.
-        See blocknotify.sh in /scripts/ for more info.'''
-        
-        log.info("New block notification received")
+        See blocknotify.sh in /scripts/ for more info."""
+        try:
+            blockcoin = args[0]
+        except IndexError as e:
+            blockcoin = None
+
+        if blockcoin:
+            log.info("New block notification received for %s" % blockcoin)
+        else:
+            log.info("New block notification received with no coinname")
+
         Interfaces.template_registry.update_block()
-        return True 
+        return True
 
     @admin
     def add_litecoind(self, *args):
@@ -64,31 +76,44 @@ class MiningService(GenericService):
         #(host, port, user, password) = args
         Interfaces.template_registry.bitcoin_rpc.add_connection(args[0], args[1], args[2], args[3])
         log.info("New litecoind connection added %s:%s" % (args[0], args[1]))
-        return True 
-    
+        return True
+
+    @admin
+    def change_litecoind(self, *args):
+        if len(args) != 7:
+            raise SubmitException("Incorrect number of parameters sent")
+
+        if settings.COINSWITCHING == False:
+            raise SubmitException("Coin switching disabled in settings.")
+
+        d = Interfaces.template_registry.wait_for_update()
+        d.addCallback(Interfaces.changeCoin, args[0], args[1], args[2], args[3], args[4], args[5], args[6])
+        return d
+
     @admin
     def refresh_config(self):
         settings.setup()
         log.info("Updated Config")
         return True
-        
+
+    @defer.inlineCallbacks
     def authorize(self, worker_name, worker_password):
         '''Let authorize worker on this connection.'''
         
         session = self.connection_ref().get_session()
         session.setdefault('authorized', {})
-        
-        if Interfaces.worker_manager.authorize(worker_name, worker_password):
+
+        if (yield Interfaces.worker_manager.authorize(worker_name, worker_password)):
             session['authorized'][worker_name] = worker_password
             is_ext_diff = False
             if settings.ALLOW_EXTERNAL_DIFFICULTY:
-                (is_ext_diff, session['difficulty']) = Interfaces.worker_manager.get_user_difficulty(worker_name)
+                (is_ext_diff, session['difficulty']) = yield Interfaces.worker_manager.get_user_difficulty(worker_name)
                 self.connection_ref().rpc('mining.set_difficulty', [session['difficulty'], ], is_notification=True)
             else:
                 session['difficulty'] = settings.POOL_TARGET
             # worker_log = (valid, invalid, is_banned, diff, is_ext_diff, timestamp)
             Interfaces.worker_manager.worker_log['authorized'][worker_name] = (0, 0, False, session['difficulty'], is_ext_diff, Interfaces.timestamper.time())            
-            return True
+            defer.returnValue(True)
         else:
             ip = self.connection_ref()._get_ip()
             log.info("Failed worker authorization: IP %s", str(ip))
@@ -96,7 +121,7 @@ class MiningService(GenericService):
                 del session['authorized'][worker_name]
             if worker_name in Interfaces.worker_manager.worker_log['authorized']:
                 del Interfaces.worker_manager.worker_log['authorized'][worker_name]
-            return False
+            defer.returnValue(False)
         
     def subscribe(self, *args):
         '''Subscribe for receiving mining jobs. This will
@@ -110,7 +135,8 @@ class MiningService(GenericService):
         session['extranonce1'] = extranonce1
         session['difficulty'] = settings.POOL_TARGET  # Following protocol specs, default diff is 1
         return Pubsub.subscribe(self.connection_ref(), MiningSubscription()) + (extranonce1_hex, extranonce2_size)
-        
+
+    @defer.inlineCallbacks
     def submit(self, worker_name, work_id, extranonce2, ntime, nonce):
         '''Try to solve block candidate using given parameters.'''
         
@@ -119,7 +145,8 @@ class MiningService(GenericService):
         
         # Check if worker is authorized to submit shares
         ip = self.connection_ref()._get_ip()
-        if not Interfaces.worker_manager.authorize(worker_name, session['authorized'].get(worker_name)):
+        authorized = yield Interfaces.worker_manager.authorize(worker_name, session['authorized'].get(worker_name))
+        if not authorized:
             log.info("Worker is not authorized: IP %s", str(ip))
             raise SubmitException("Worker is not authorized")
 
@@ -161,7 +188,7 @@ class MiningService(GenericService):
                 log.debug("Clearing worker stats for: %s" % worker_name)
             (valid, invalid, is_banned, last_ts) = (0, 0, is_banned, Interfaces.timestamper.time())
 
-        log.debug("%s (%d, %d, %s, %s, %d) %0.2f%% work_id(%s) job_id(%s) diff(%f)" % (worker_name, valid, invalid, is_banned, is_ext_diff, last_ts, percent, work_id, job_id, difficulty))
+        #log.debug("%s (%d, %d, %s, %s, %d) %0.2f%% work_id(%s) job_id(%s) diff(%f)" % (worker_name, valid, invalid, is_banned, is_ext_diff, last_ts, percent, work_id, job_id, difficulty))
         if not is_ext_diff:    
             Interfaces.share_limiter.submit(self.connection_ref, job_id, difficulty, submit_time, worker_name)
             
@@ -188,16 +215,20 @@ class MiningService(GenericService):
         if is_banned:
             raise SubmitException("Worker is temporarily banned")
  
-        Interfaces.share_manager.on_submit_share(worker_name, block_header,
-            block_hash, difficulty, submit_time, True, ip, '', share_diff)
-
         if on_submit != None:
+            # found a block solution - add share to db table in callback
             # Pool performs submitblock() to litecoind. Let's hook
             # to result and report it to share manager
-            on_submit.addCallback(Interfaces.share_manager.on_submit_block,
-                worker_name, block_header, block_hash, submit_time, ip, share_diff)
+            #Interfaces.share_manager.on_submit_share(worker_name, block_header,
+            #                                         block_hash, difficulty, submit_time, True, ip, '', share_diff)
 
-        return True
+            on_submit.addCallback(Interfaces.share_manager.on_submit_block, worker_name, block_header, block_hash,
+                                  difficulty, submit_time, ip, share_diff)
+        else:
+            Interfaces.share_manager.on_submit_share(worker_name, block_header,
+                                                     block_hash, difficulty, submit_time, True, ip, '', share_diff)
+
+        defer.returnValue(True)
             
     # Service documentation for remote discovery
     update_block.help_text = "Notify Stratum server about new block on the network."

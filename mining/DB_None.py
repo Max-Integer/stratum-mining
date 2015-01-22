@@ -1,56 +1,95 @@
-import stratum.logger
-log = stratum.logger.get_logger('None')
-                
+import time
+import hashlib
+import lib.settings as settings
+import lib.logger
+from twisted.enterprise import adbapi
+from twisted.internet import defer
+
+log = lib.logger.get_logger('DB_None')
+
 class DB_None():
     def __init__(self):
         log.debug("Connecting to DB")
+        self.connect()
+        
+    def connect(self):
+	log.debug('Not Connecting to Empty DB')
 
-    def updateStats(self,averageOverTime):
-        log.debug("Updating Stats")
+    @defer.inlineCallbacks
+    def fetchone_nb(self, query, args=None):
+	defer.returnValue(True)
 
-    def import_shares(self,data):
-        log.debug("Importing Shares")
+    def fetchall_nb(self, query, args=None):
+	defer.returnValue(None)
 
-    def found_block(self,data):
-        log.debug("Found Block")
-    
+    def execute_nb(self, query, args=None):
+	defer.returnValue(None)
+
+    def _executemany(self, txn, query, args):
+        defer.returnValue(None)
+
+    def executemany(self, query, args=None):
+	defer.returnValue(None)
+
+    def import_shares(self, data):
+	defer.returnValue(None)
+
+    @defer.inlineCallbacks
+    def found_block(self, res, data):
+        log.debug("############ found_block #############")
+	defer.returnValue(None)
+
+    def get_user_nb(self, id_or_username):
+        log.debug("Finding nb user with id or username of %s", id_or_username)
+        defer.returnValue(None)
+
     def get_user(self, id_or_username):
-        log.debug("Get User")
+        log.debug("Finding user with id or username of %s", id_or_username)
+	defer.returnValue(None)
 
-    def list_users(self):
-        log.debug("List Users")
+    @defer.inlineCallbacks
+    def get_uid(self, id_or_username):
+	defer.returnValue(None)
 
-    def delete_user(self,username):
-        log.debug("Deleting Username")
+    def insert_worker(self, account_id, username, password):
+        log.debug("Adding new worker %s", username)
+        return str(username)
+        
 
-    def insert_user(self,username,password):
-        log.debug("Adding Username/Password")
+    def delete_user(self, id_or_username):
+        log.debug("Deleting user with id or username of %s", id_or_username)
+	return
 
-    def update_user(self,username,password):
-        log.debug("Updating Username/Password")
+    def insert_user(self, username, password):
+        log.debug("Adding new user %s", username)
+        return str(username)
 
-    def check_password(self,username,password):
-        log.debug("Checking Username/Password")
-        return True
-    
-    def update_pool_info(self,pi):
-        log.debug("Update Pool Info")
+    def update_user(self, id_or_username, password):
+        log.debug("Updating password for user %s", id_or_username);
+	return None
+
+    @defer.inlineCallbacks
+    def check_password(self, username, password):
+        log.debug("Checking username/password for %s", username)
+        defer.returnValue(False)
+
+    def update_worker_diff(self, username, diff):
+        log.debug("Setting difficulty for %s to %s", username, diff)
+	return None
 
     def clear_worker_diff(self):
-        log.debug("Clear Worker Diff")
+        log.debug("Resetting difficulty for all workers")
+	return None
 
-    def get_pool_stats(self):
-        log.debug("Get Pool Stats")
-        ret = {}
-        return ret
-
+    @defer.inlineCallbacks
     def get_workers_stats(self):
-        log.debug("Get Workers Stats")
-        ret = {}
-        return ret
-
-    def check_tables(self):
-        log.debug("Checking Tables")
+        result = yield self.fetchall_nb(
+        defer.returnValue(None)
 
     def close(self):
-        log.debug("Close Connection")
+	return None
+
+    @defer.inlineCallbacks
+    def check_tables(self):
+        log.debug("Checking Database")
+	return(True)

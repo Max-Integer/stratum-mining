@@ -22,18 +22,19 @@ class WorkerManagerInterface(object):
         self.job_log = {}
         self.job_log.setdefault('None', {})
         return
-        
+
     def authorize(self, worker_name, worker_password):
         # Important NOTE: This is called on EVERY submitted share. So you'll need caching!!!
         return dbi.check_password(worker_name, worker_password)
- 
+
+    @defer.inlineCallbacks
     def get_user_difficulty(self, worker_name):
-        wd = dbi.get_user(worker_name)
+        wd = yield dbi.get_user_nb(worker_name)
         if len(wd) > 6:
             if wd[6] != 0:
-                return (True, wd[6])
+                defer.returnValue((True, wd[6]))
                 #dbi.update_worker_diff(worker_name, wd[6])
-        return (False, settings.POOL_TARGET)
+        defer.returnValue((False, settings.POOL_TARGET))
 
     def register_work(self, worker_name, job_id, difficulty):
         now = Interfaces.timestamper.time()
@@ -81,15 +82,28 @@ class ShareManagerInterface(object):
         self.prev_hash = b58encode(int(prevhash, 16))
         pass
     
-    def on_submit_share(self, worker_name, block_header, block_hash, difficulty, timestamp, is_valid, ip, invalid_reason, share_diff):
-        log.debug("%s (%s) %s %s" % (block_hash, share_diff, 'valid' if is_valid else 'INVALID', worker_name))
-        dbi.queue_share([worker_name, block_header, block_hash, difficulty, timestamp, is_valid, ip, self.block_height, self.prev_hash,
-                invalid_reason, share_diff ])
+    def on_submit_share(self, worker_name, block_header, block_hash, difficulty, timestamp, is_valid, ip,
+                        invalid_reason, share_diff):
+        #log.debug("%s (%s) %s %s" % (block_hash, share_diff, 'valid' if is_valid else 'INVALID', worker_name))
+        share_data = [worker_name, block_header, block_hash, difficulty, timestamp, is_valid, ip, self.block_height,
+                      self.prev_hash, invalid_reason, share_diff, settings.COINDAEMON_NAME]
+        dbi.queue_share(share_data)
  
-    def on_submit_block(self, is_accepted, worker_name, block_header, block_hash, timestamp, ip, share_diff):
+    def on_submit_block(self, on_submit, worker_name, block_header, block_hash, difficulty, submit_time, ip, share_diff):
+        (is_accepted, valid_hash) = on_submit
+        if settings.SOLUTION_BLOCK_HASH:
+            block_hash = valid_hash
+
+        #submit share
+        Interfaces.share_manager.on_submit_share(worker_name, block_header, block_hash, difficulty, submit_time,
+                                                 True, ip, '', share_diff)
+
         log.info("Block %s %s" % (block_hash, 'ACCEPTED' if is_accepted else 'REJECTED'))
-        #dbi.run_import(dbi, Force=True)
-        dbi.found_block([worker_name, block_header, block_hash, -1, timestamp, is_accepted, ip, self.block_height, self.prev_hash, share_diff ])
+        block_data = [worker_name, block_header, block_hash, -1, submit_time, is_accepted, ip, self.block_height,
+                      self.prev_hash, share_diff, settings.COINDAEMON_NAME]
+
+        dbi.found_block(block_data)
+	dbi.run_import(db, Force=True)
         
 class TimestamperInterface(object):
     '''This is the only source for current time in the application.
@@ -133,3 +147,68 @@ class Interfaces(object):
     def set_template_registry(cls, registry):
         dbi.set_bitcoinrpc(registry.bitcoin_rpc)
         cls.template_registry = registry
+
+    @classmethod
+    @defer.inlineCallbacks
+    def changeCoin(cls, res, host, port, user, password, address, powpos, txcomments):
+
+        cls.template_registry.update_in_progress = True
+
+        settings.COINDAEMON_TRUSTED_HOST = str(host)
+        settings.COINDAEMON_TRUSTED_PORT = port
+        settings.COINDAEMON_TRUSTED_USER = str(user)
+        settings.COINDAEMON_TRUSTED_PASSWORD = str(password)
+        settings.CENTRAL_WALLET = str(address)
+        settings.COINDAEMON_TX = 'yes' if txcomments else 'no'
+
+        # TODO add coin name option so username doesn't have to be the same as coin name
+        settings.COINDAEMON_NAME = str(user)
+
+        log.info("CHANGING COIN # "+str(user)+" txcomments: "+settings.COINDAEMON_TX)
+        
+        ''' Function to add a litecoind instance live '''
+        from lib.coinbaser import SimpleCoinbaser
+        from lib.bitcoin_rpc_manager import BitcoinRPCManager
+        from lib.block_template import BlockTemplate
+        from subscription import MiningSubscription
+        
+        #(host, port, user, password) = args
+        bitcoin_rpc = BitcoinRPCManager()
+
+        result = (yield bitcoin_rpc.check_submitblock())
+        if result == True:
+            log.info("Found submitblock")
+        elif result == False:
+            log.info("Did not find submitblock")
+        else:
+            log.info("unknown submitblock result")
+
+        data = (yield bitcoin_rpc.getblocktemplate())
+        if isinstance(data, dict):
+            # litecoind implements version 1 of getblocktemplate
+            if data['version'] >= 1:
+                result = (yield bitcoin_rpc.getdifficulty())
+                if isinstance(result,dict):
+                    if 'proof-of-stake' in result:
+                        settings.COINDAEMON_Reward = 'POS'
+                        log.info("Coin detected as POS")
+                else:
+                    settings.COINDAEMON_Reward = 'POW'
+                    log.info("Coin detected as POW")
+            else:
+                    log.error("Block Version mismatch: %s" % result['version'])
+
+        coinbaser = SimpleCoinbaser(bitcoin_rpc, getattr(settings, 'CENTRAL_WALLET'))
+        (yield coinbaser.on_load)
+
+        cls.template_registry.update(BlockTemplate,
+                                     coinbaser,
+                                     bitcoin_rpc,
+                                     31,
+                                     MiningSubscription.on_template,
+                                     cls.share_manager.on_network_block,
+                                     data)
+        
+        log.info("New litecoind connection changed %s:%s" % (host, port))
+
+        defer.returnValue(True)

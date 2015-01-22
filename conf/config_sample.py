@@ -12,7 +12,8 @@ CONFIG_VERSION = 0.1
 
 CENTRAL_WALLET = 'Local coin address where money goes'
 
-COINDAEMON_TRUSTED_HOST = '127.0.0.1'
+COINDAEMON_NAME = 'LTC'
+COINDAEMON_TRUSTED_HOST = 'localhost'
 COINDAEMON_TRUSTED_PORT = 8332
 COINDAEMON_TRUSTED_USER = 'coind rpc username'
 COINDAEMON_TRUSTED_PASSWORD = 'coind rpc password'
@@ -20,6 +21,12 @@ COINDAEMON_TRUSTED_PASSWORD = 'coind rpc password'
 COINDAEMON_ALGO = 'drk_hash.getPoWHash'
 COINDAEMON_TX = True        		# For Coins which support TX Messages please enter yes in the TX selection
 DIFF1 = '0x0000ffff00000000000000000000000000000000000000000000000000000000' # scrypt
+
+# ******************** COIN SWITCHER ****************
+# Set to True to enable coin-switching capability.
+# Needs to be a setting due to database differences
+COINSWITCHING  = False
+
 # ******************** BASIC SETTINGS ***************
 # Backup Coin Daemon address's (consider having at least 1 backup)
 # You can have up to 99
@@ -84,6 +91,9 @@ PASSWORD_SALT = 'some_crazy_string'
 # ******************** Database  *********************
 DATABASE_DRIVER = 'mysql'       # Options: none, sqlite, postgresql or mysql
 DATABASE_EXTEND = False         # SQLite and PGSQL Only!
+
+DATABASE_DRIVER = 'mysql'        # Options: none, sqlite, postgresql or mysql
+DATABASE_EXTEND = False          # SQLite and PGSQL Only!
 
 # SQLite
 DB_SQLITE_FILE = 'pooldb.sqlite'

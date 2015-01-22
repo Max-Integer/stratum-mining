@@ -1,6 +1,9 @@
-#Description
-This Repo will likely be superceeded by a Second Generation All in One, Powerful Serer called CoiniumSev. The Current Repo is [here](https://github.com/CoiniumServ/CoiniumServ).
+[ ![Codeship Status for ahmedbodi/stratum-mining](https://www.codeship.io/projects/b3003a70-61a3-0131-231e-26f75a0c690d/status?branch=master)](https://www.codeship.io/projects/12274)
 
+#Status
+This project is now unmaintained. I no longer use this software so its difficult for me to maintain. However i do still offer paid services where code, setup and install needs doing. 
+
+#Description
 Stratum-mining is a pooled mining protocol. It is a replacement for *getwork* based pooling servers by allowing clients to generate work. The stratum protocol is described [here](http://mining.bitcoin.cz/stratum-mining) in full detail.
 
 This is a implementation of stratum-mining for scrypt based coins. It is compatible with *MPOS* as it complies with the standards of *pushpool*. The end goal is to build on these standards to come up with a more stable solution.
@@ -68,11 +71,10 @@ Other coins have been known to work with this implementation. I have tested with
 The installation of this *stratum-mining* can be found in the Repo Wiki. 
 
 #Contact
-I am available in the #MPOS, #crypto-expert, #digitalcoin, and #worldcoin channels on freenode. 
-Although i am willing to provide support through IRC please file issues on the repo.
-Issues as a direct result of stratum will be helped with as much as possible
-However issues related to a coin daemon's setup and other non stratum issues, 
+I am available in the #MPOS, #crypto-expert, #digitalcoin channels on freenode. 
 Please research and attempt to debug first.
+
+Thank you
 
 #Credits
 
