@@ -10,17 +10,16 @@ CONFIG_VERSION = 0.1
 # ******************** BASIC SETTINGS ***************
 # These are the MUST BE SET parameters!
 
-CENTRAL_WALLET = 'set_valid_addresss_in_config!'                # Local coin address where money goes
+CENTRAL_WALLET = 'Local coin address where money goes'
 
-COINDAEMON_TRUSTED_HOST = 'localhost'
+COINDAEMON_TRUSTED_HOST = '127.0.0.1'
 COINDAEMON_TRUSTED_PORT = 8332
-COINDAEMON_TRUSTED_USER = 'user'
-COINDAEMON_TRUSTED_PASSWORD = 'somepassword'
+COINDAEMON_TRUSTED_USER = 'coind rpc username'
+COINDAEMON_TRUSTED_PASSWORD = 'coind rpc password'
 
-COINDAEMON_ALGO = 'scrypt'    # The available options are:  scrypt, sha256d, scrypt-jane, skeinhash, and quark
-SCRYPTJANE_NAME = 'vtc_scrypt'# Set this to the Scrypt jane module name e.g. yac_scrypt or vtc_scrypt
-COINDAEMON_TX = False         # For Coins which support TX Messages please enter yes in the TX selection
-
+COINDAEMON_ALGO = 'drk_hash.getPoWHash'
+COINDAEMON_TX = True        		# For Coins which support TX Messages please enter yes in the TX selection
+DIFF1 = '0x0000ffff00000000000000000000000000000000000000000000000000000000' # scrypt
 # ******************** BASIC SETTINGS ***************
 # Backup Coin Daemon address's (consider having at least 1 backup)
 # You can have up to 99
@@ -48,7 +47,7 @@ LOGDIR = 'log/'
 
 # Main application log file.
 LOGFILE = None      # eg. 'stratum.log'
-LOGLEVEL = 'DEBUG'
+LOGLEVEL = 'INFO'
 # Logging Rotation can be enabled with the following settings
 # It if not enabled here, you can set up logrotate to rotate the files. 
 # For built in log rotation set LOG_ROTATION = True and configure the variables
@@ -69,7 +68,7 @@ HOSTNAME = 'localhost'
 ENABLE_EXAMPLE_SERVICE = False
 
 # Port used for Socket transport. Use 'None' for disabling the transport.
-LISTEN_SOCKET_TRANSPORT = 3333
+LISTEN_SOCKET_TRANSPORT = 3334
 # Port used for HTTP Poll transport. Use 'None' for disabling the transport
 LISTEN_HTTP_TRANSPORT = None
 # Port used for HTTPS Poll transport
@@ -120,7 +119,7 @@ USERS_AUTOADD = False           # Automatically add users to database when they 
 USERS_CHECK_PASSWORD = False    # Check the workers password? (Many pools don't)
 
 # Transaction Settings
-COINBASE_EXTRAS = '/stratumPool/'           # Extra Descriptive String to incorporate in solved blocks
+COINBASE_EXTRAS = '/AhmedBodiwala/'           # Extra Descriptive String to incorporate in solved blocks
 ALLOW_NONLOCAL_WALLET = False               # Allow valid, but NON-Local wallet's
 
 # Coin Daemon communication polling settings (In Seconds)
@@ -139,7 +138,7 @@ VDIFF_X2_TYPE = True            # Powers of 2 e.g. 2,4,8,16,32,64,128,256,512,10
 VDIFF_FLOAT = False             # Use float difficulty
 
 # Pool Target (Base Difficulty)
-POOL_TARGET = 32                # Pool-wide difficulty target int >= 1
+POOL_TARGET = 0.00001                # Pool-wide difficulty target int >= 1
 
 # Variable Difficulty Enable
 VARIABLE_DIFF = True            # Master variable difficulty enable
@@ -148,9 +147,9 @@ VARIABLE_DIFF = True            # Master variable difficulty enable
 #VARDIFF will start at the POOL_TARGET. It can go as low as the VDIFF_MIN and as high as min(VDIFF_MAX or coindaemons difficulty)
 USE_COINDAEMON_DIFF = False     # Set the maximum difficulty to the coindaemon difficulty. 
 DIFF_UPDATE_FREQUENCY = 86400   # How often to check coindaemon difficulty. Should be less than coin difficulty retarget time
-VDIFF_MIN_TARGET = 16           # Minimum target difficulty 
-VDIFF_MAX_TARGET = 1024         # Maximum target difficulty 
-VDIFF_MIN_CHANGE = 1            # Minimum change of worker's difficulty if VDIFF_X2_TYPE=False and the final difficulty will be within the boundaries (VDIFF_MIN_TARGET, VDIFF_MAX_TARGET)
+VDIFF_MIN_TARGET = 0.00001           # Minimum target difficulty 
+VDIFF_MAX_TARGET = 0.1         # Maximum target difficulty 
+VDIFF_MIN_CHANGE = 0.00001        # Minimum change of worker's difficulty if VDIFF_X2_TYPE=False and the final difficulty will be within the boundaries (VDIFF_MIN_TARGET, VDIFF_MAX_TARGET)
 VDIFF_TARGET_TIME = 15          # Target time per share (i.e. try to get 1 share per this many seconds)
 VDIFF_RETARGET_TIME = 120       # How often the miners difficulty changes if appropriate
 VDIFF_VARIANCE_PERCENT = 30     # Allow average time to very this % from target without retarget
