@@ -15,6 +15,7 @@ class BitcoinRPC(object):
     
     def __init__(self, host, port, username, password):
         log.debug("Got to Bitcoin RPC")
+	self._lock = defer.DeferredLock()	
         self.bitcoin_url = 'http://%s:%d' % (host, port)
         self.credentials = base64.b64encode("%s:%s" % (username, password))
         self.headers = {
@@ -34,7 +35,7 @@ class BitcoinRPC(object):
         )
            
     def _call(self, method, params):
-        return self._call_raw(json.dumps({
+	return self._lock.run(self._call_raw, json.dumps({
                 'jsonrpc': '2.0',
                 'method': method,
                 'params': params,
