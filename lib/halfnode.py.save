@@ -20,6 +20,14 @@ import lib.logger
 log = lib.logger.get_logger('halfnode')
 log.debug("Got to Halfnode")
 
+if settings.COINDAEMON_TX != False:
+    log.debug("########################################### Loading SHA256 Transaction Message Support #########################################################")
+    pass
+else:
+    log.debug("########################################### NOT Loading SHA256 Transaction Message Support ######################################################")
+    pass
+
+
 MY_VERSION = 31402
 MY_SUBVERSION = ".4"
 
@@ -135,14 +143,12 @@ class CTransaction(object):
             self.nVersion = 1
             if settings.COINDAEMON_TX != False:
                 self.nVersion = 2
-	    if settings.COINDAEMON_Reward == 'POS':
-		self.nTime = 0
+	    self.nTime = 0
             self.vin = []
             self.vout = []
             self.nLockTime = 0
             self.sha256 = None
-            if settings.COINDAEMON_TX != False: 
-		self.strTxComment = ""
+	    self.strTxComment = ""
 
     def deserialize(self, f):
             self.nVersion = struct.unpack("<i", f.read(4))[0]
@@ -183,7 +189,7 @@ class CTransaction(object):
 
 class CBlock(object):
     def __init__(self):
-        self.nVersion = 2
+        self.nVersion = 1
         self.hashPrevBlock = 0
         self.hashMerkleRoot = 0
         self.nTime = 0

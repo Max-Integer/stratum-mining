@@ -2,16 +2,6 @@ import weakref
 import binascii
 import util
 import StringIO
-import settings
-if settings.COINDAEMON_ALGO == 'scrypt':
-    import ltc_scrypt
-elif settings.COINDAEMON_ALGO  == 'scrypt-jane':
-    scryptjane = __import__(settings.SCRYPTJANE_NAME) 
-elif settings.COINDAEMON_ALGO == 'quark':
-    import quark_hash
-elif settings.COINDAEMON_ALGO == 'skeinhash':
-    import skeinhash
-else: pass
 from twisted.internet import defer
 from lib.exceptions import SubmitException
 
@@ -20,8 +10,7 @@ log = lib.logger.get_logger('template_registry')
 log.debug("Got to Template Registry")
 from mining.interfaces import Interfaces
 from extranonce_counter import ExtranonceCounter
-import lib.settings as settings
-
+from lib import settings
 
 class JobIdGenerator(object):
     '''Generate pseudo-unique job_id. It does not need to be absolutely unique,
@@ -48,7 +37,6 @@ class TemplateRegistry(object):
         self.extranonce_counter = ExtranonceCounter(instance_id)
         self.extranonce2_size = block_template_class.coinbase_transaction_class.extranonce_size \
                 - self.extranonce_counter.get_size()
-        log.debug("Got to Template Registry")
         self.coinbaser = coinbaser
         self.block_template_class = block_template_class
         self.bitcoin_rpc = bitcoin_rpc
@@ -58,7 +46,8 @@ class TemplateRegistry(object):
         self.last_block = None
         self.update_in_progress = False
         self.last_update = None
-        
+	self.algo = util.import_helper(settings.COINDAEMON_ALGO)        
+
         # Create first block template on startup
         self.update_block()
         
@@ -150,14 +139,10 @@ class TemplateRegistry(object):
     
     def diff_to_target(self, difficulty):
         '''Converts difficulty to target'''
-        if settings.COINDAEMON_ALGO == 'scrypt' or 'scrypt-jane':
-            diff1 = 0x0000ffff00000000000000000000000000000000000000000000000000000000
-        elif settings.COINDAEMON_ALGO == 'quark':
-            diff1 = 0x000000ffff000000000000000000000000000000000000000000000000000000
-        else:
-            #diff1 = 0x00000000ffff0000000000000000000000000000000000000000000000000000
-            diff1 = 0x00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-
+	if settings.DIFF1:
+	   diff1 = settings.DIFF1
+	else:
+	   diff1 = 0x00000000ffff0000000000000000000000000000000000000000000000000000
         return diff1 / difficulty
     
     def get_job(self, job_id, worker_name, ip=False):
@@ -255,16 +240,7 @@ class TemplateRegistry(object):
         header_bin = job.serialize_header(merkle_root_int, ntime_bin, nonce_bin)
     
         # 4. Reverse header and compare it with target of the user
-        if settings.COINDAEMON_ALGO == 'scrypt':
-            hash_bin = ltc_scrypt.getPoWHash(''.join([ header_bin[i*4:i*4+4][::-1] for i in range(0, 20) ]))
-        elif settings.COINDAEMON_ALGO  == 'scrypt-jane':
-            hash_bin = scryptjane.getPoWHash(''.join([ header_bin[i*4:i*4+4][::-1] for i in range(0, 20) ]))
-        elif settings.COINDAEMON_ALGO == 'quark':
-            hash_bin = quark_hash.getPoWHash(''.join([ header_bin[i*4:i*4+4][::-1] for i in range(0, 20) ]))
-	elif settings.COINDAEMON_ALGO == 'skeinhash':
-            hash_bin = skeinhash.skeinhash(''.join([ header_bin[i*4:i*4+4][::-1] for i in range(0, 20) ]))
-        else:
-            hash_bin = util.doublesha(''.join([ header_bin[i*4:i*4+4][::-1] for i in range(0, 20) ]))
+	hash_bin = self.algo(''.join([ header_bin[i*4:i*4+4][::-1] for i in range(0, 20) ]))
 
         hash_int = util.uint256_from_str(hash_bin)
         scrypt_hash_hex = "%064x" % hash_int
@@ -273,7 +249,6 @@ class TemplateRegistry(object):
             header_hex = header_hex+"000000800000000000000000000000000000000000000000000000000000000000000000000000000000000080020000"
         elif settings.COINDAEMON_ALGO == 'quark':
             header_hex = header_hex+"000000800000000000000000000000000000000000000000000000000000000000000000000000000000000080020000"
-        else: pass
                  
         target_user = self.diff_to_target(difficulty)
         if hash_int > target_user:
@@ -293,12 +268,9 @@ class TemplateRegistry(object):
             log.info("We found a block candidate! %s" % scrypt_hash_hex)
 
             # Reverse the header and get the potential block hash (for scrypt only) 
-            #if settings.COINDAEMON_ALGO == 'scrypt' or settings.COINDAEMON_ALGO == 'sha256d':
-            #   if settings.COINDAEMON_Reward == 'POW':
             block_hash_bin = util.doublesha(''.join([ header_bin[i*4:i*4+4][::-1] for i in range(0, 20) ]))
             block_hash_hex = block_hash_bin[::-1].encode('hex_codec')
-            #else:   block_hash_hex = hash_bin[::-1].encode('hex_codec')
-            #else:  block_hash_hex = hash_bin[::-1].encode('hex_codec')
+
             # 6. Finalize and serialize block object 
             job.finalize(merkle_root_int, extranonce1_bin, extranonce2_bin, int(ntime, 16), int(nonce, 16))
             
