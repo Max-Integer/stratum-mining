@@ -18,33 +18,35 @@ from lib.bitcoin_rpc import BitcoinRPC
 
 class BitcoinRPCManager(object):
     
-    def __init__(self,host=None,port=None,user=None,passwd=None):
+    def __init__(self,host=None,port=None,user=None,passwd=None, useSSL=False):
         log.debug("Got to Bitcoin RPC Manager")
         self.conns = {}
-        if host is None or port is None or user is None or passwd is None:
+        if host is None or port is None or user is None or passwd is None or useSSL is None:
             self.conns[0] = BitcoinRPC(settings.COINDAEMON_TRUSTED_HOST,
                                        settings.COINDAEMON_TRUSTED_PORT,
                                        settings.COINDAEMON_TRUSTED_USER,
-                                       settings.COINDAEMON_TRUSTED_PASSWORD)
+                                       settings.COINDAEMON_TRUSTED_PASSWORD,
+				       settings.COINDAEMON_TRUSTED_SSL)
             self.curr_conn = 0
             for x in range (1,99):
                 if hasattr(settings, 'COINDAEMON_TRUSTED_HOST_' + str(x)) and hasattr(settings, 'COINDAEMON_TRUSTED_PORT_' + str(x)) and hasattr(settings, 'COINDAEMON_TRUSTED_USER_' + str(x)) and hasattr(settings, 'COINDAEMON_TRUSTED_PASSWORD_' + str(x)):
                     self.conns[len(self.conns)] = BitcoinRPC(settings.__dict__['COINDAEMON_TRUSTED_HOST_' + str(x)],
                                                              settings.__dict__['COINDAEMON_TRUSTED_PORT_' + str(x)],
                                                              settings.__dict__['COINDAEMON_TRUSTED_USER_' + str(x)],
-                                                             settings.__dict__['COINDAEMON_TRUSTED_PASSWORD_' + str(x)])
+                                                             settings.__dict__['COINDAEMON_TRUSTED_PASSWORD_' + str(x)],
+							     settings.__dict__['COINDAEMON_TRUSTED_SSL_' + str(x)])
         else:
-            self.conns[0] = BitcoinRPC(host,port,user,passwd)
+            self.conns[0] = BitcoinRPC(host,port,user,passwd, useSSL)
             self.curr_conn = 0
             
                 
 
-    def add_connection(self, host, port, user, password):
+    def add_connection(self, host, port, user, password, useSSL=False):
         # TODO: Some string sanity checks
         self.conns[len(self.conns)] = BitcoinRPC(host, port, user, password)
 
-    def change_connection(self, host, port, user, password):
-        self.conns[0] = BitcoinRPC(host, port, user, password)
+    def change_connection(self, host, port, user, password, useSSL=False):
+        self.conns[0] = BitcoinRPC(host, port, user, password, useSSL=False)
 
     def next_connection(self):
         time.sleep(1)

@@ -16,7 +16,10 @@ class BitcoinRPC(object):
     def __init__(self, host, port, username, password):
         log.debug("Got to Bitcoin RPC")
 	self._lock = defer.DeferredLock()	
-        self.bitcoin_url = 'http://%s:%d' % (host, port)
+	if useSSL:
+           self.bitcoin_url = 'https://%s:%d' % (host, port)
+        else:
+           self.bitcoin_url = 'http://%s:%d' % (host, port)
         self.credentials = base64.b64encode("%s:%s" % (username, password))
         self.headers = {
             'Content-Type': 'text/json',

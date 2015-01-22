@@ -17,6 +17,7 @@ COINDAEMON_TRUSTED_HOST = 'localhost'
 COINDAEMON_TRUSTED_PORT = 8332
 COINDAEMON_TRUSTED_USER = 'coind rpc username'
 COINDAEMON_TRUSTED_PASSWORD = 'coind rpc password'
+COINDAEMON_TRUSTED_SSL = False
 
 COINDAEMON_ALGO = 'drk_hash.getPoWHash'
 COINDAEMON_TX = True        		# For Coins which support TX Messages please enter yes in the TX selection
